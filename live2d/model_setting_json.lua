@@ -1,5 +1,4 @@
 local Live2DFramework = require("live2d.framework.Live2DFramework")
-local json = require("live2d.dkjson")  -- will need dkjson or use ffi cjson
 
 local ModelSettingJson = {}
 ModelSettingJson.__index = ModelSettingJson

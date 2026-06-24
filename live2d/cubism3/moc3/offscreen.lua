@@ -122,7 +122,7 @@ function offscreen.effect_source_drawable_indices(self, ids)
         local parent_part = self.drawable_parent_part_indices[i + 1]
         if parent_part >= 0 then
             if is_part_descendant_of(self, parent_part, effect_part_index) then
-                table.insert(result, i)
+                result[#result + 1] = i
             end
         end
     end

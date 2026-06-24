@@ -112,7 +112,7 @@ function art_meshes.parse(bytes)
 
     local meshes = {}
     for i = 0, art_mesh_count - 1 do
-        table.insert(meshes, art_meshes.new_art_mesh_info(
+        meshes[#meshes + 1] = art_meshes.new_art_mesh_info(
             texture_indices[i + 1],
             drawable_flags[i + 1],
             pos_index_counts[i + 1],
@@ -121,7 +121,7 @@ function art_meshes.parse(bytes)
             vertex_counts[i + 1],
             mask_begin_indices[i + 1],
             mask_counts[i + 1]
-        ))
+        )
     end
 
     return setmetatable({

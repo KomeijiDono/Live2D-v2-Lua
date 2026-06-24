@@ -1,4 +1,4 @@
-local RotationDeformer = require("live2d.core.deformer.roation_deformer")
+local RotationDeformer = require("live2d.core.deformer.rotation_deformer")
 local WarpDeformer = require("live2d.core.deformer.warp_deformer")
 local Mesh = require("live2d.core.draw.mesh")
 local ModelImpl = require("live2d.core.model.model_impl")

@@ -137,10 +137,10 @@ function interpolation.interpolate_float32_grouped(values, weights, groups, skip
             for i = group.offset + 1, ends do
                 sum = sum + weighted[i]
             end
-            table.insert(out, {
+            out[#out + 1] = {
                 out_index = group.out_index,
                 value = sum,
-            })
+            }
         end
     end
     return out

@@ -127,7 +127,7 @@ local function binding_keys(self, binding_index)
     end
     local result = {}
     for i = 0, len - 1 do
-        table.insert(result, self.key_values[begin + i + 1])
+        result[#result + 1] = self.key_values[begin + i + 1]
     end
     return result
 end
@@ -147,7 +147,7 @@ local function band_keyform_bindings(self, band_index)
     end
     local result = {}
     for i = 0, len - 1 do
-        table.insert(result, self.keyform_binding_indices[begin + i + 1])
+        result[#result + 1] = self.keyform_binding_indices[begin + i + 1]
     end
     return result
 end
@@ -192,11 +192,11 @@ function keyform_bindings.keyform_slots(self, band_index, keyform_count, paramet
         if active_index >= #keys then
             return nil
         end
-        table.insert(axes, keyforms_core.new_keyform_axis(
+        axes[#axes + 1] = keyforms_core.new_keyform_axis(
             interval.left_index,
             interval.t,
             stride
-        ))
+        )
         stride = stride * #keys
         if not stride then
             return nil
@@ -207,10 +207,10 @@ function keyform_bindings.keyform_slots(self, band_index, keyform_count, paramet
     local result = {}
     for _, slot in ipairs(slots) do
         if slot.flat_index < keyform_count then
-            table.insert(result, {
+            result[#result + 1] = {
                 local_index = slot.flat_index,
                 weight = slot.weight,
-            })
+            }
         else
             return nil -- All flat_indices must be < keyform_count
         end

@@ -1,4 +1,3 @@
-local Live2DModelOpenGL = require("live2d.core.live2d_model_opengl")
 local Live2DMotion = require("live2d.core.motion.live2d_motion")
 local Live2DFramework = require("live2d.framework.Live2DFramework")
 local L2DModelMatrix = require("live2d.framework.matrix.l2d_model_matrix")

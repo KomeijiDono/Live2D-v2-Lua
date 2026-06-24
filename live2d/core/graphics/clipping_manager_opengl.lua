@@ -8,7 +8,6 @@ local TextureInfo = require("live2d.core.graphics.texture_info")
 local def = require("live2d.core.def")
 local Live2D = require("live2d.core.live2d")
 local Live2DGLWrapper = require("live2d.core.live2d_gl_wrapper")
-local Float32Array = require("live2d.core.type.array").Float32Array
 
 local ClippingManagerOpenGL = {}
 ClippingManagerOpenGL.__index = ClippingManagerOpenGL
@@ -181,19 +180,23 @@ function ClippingManagerOpenGL:calcClippedDrawTotalBounds(a6, aV)
         if aK:isAvailable() then
             local aX = aK:getTransformedPoints()
             local a4 = #aX
-            local aI = Float32Array(a4)
-            local aH = Float32Array(a4)
-            local aO = 1
+            local a2 = nil
+            local a1 = nil
+            local a0 = nil
+            local aZ = nil
             for a3 = def.VERTEX_OFFSET + 1, a4, def.VERTEX_STEP do
-                aI[aO] = aX[a3]
-                aH[aO] = aX[a3 + 1]
-                aO = aO + 1
+                local x = aX[a3]
+                local y = aX[a3 + 1]
+                if a2 == nil then
+                    a2 = x; a0 = x; a1 = y; aZ = y
+                else
+                    if x < a2 then a2 = x end
+                    if x > a0 then a0 = x end
+                    if y < a1 then a1 = y end
+                    if y > aZ then aZ = y end
+                end
             end
-            if aO > 1 then
-                local a2 = math.min(unpack(aI, 1, aO - 1))
-                local a1 = math.min(unpack(aH, 1, aO - 1))
-                local a0 = math.max(unpack(aI, 1, aO - 1))
-                local aZ = math.max(unpack(aH, 1, aO - 1))
+            if a2 ~= nil then
                 if a2 < aT then aT = a2 end
                 if a1 < aR then aR = a1 end
                 if a0 > aS then aS = a0 end

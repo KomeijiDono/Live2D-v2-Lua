@@ -5,6 +5,8 @@ local Vector2 = require("live2d.cubism3.core.math").Vector2
 local drawable = require("live2d.cubism3.moc3.drawable")
 local deformers_mod = require("live2d.cubism3.moc3.deformers")
 
+local new_vertex = drawable.new_vertex
+
 local mesh_build = {}
 
 local function build_moc3_drawable_mesh_for_pose(art_meshes, art_mesh_keyforms, composed, bindings, parameter_values, art_mesh_index)
@@ -77,19 +79,20 @@ local function build_moc3_drawable_mesh_for_pose(art_meshes, art_mesh_keyforms, 
     local first_kf = art_mesh_keyforms:art_mesh_keyform_positions(art_mesh_index, slots[1].local_index)
     if not first_kf or #first_kf % 2 ~= 0 then return nil end
     local vertex_count = #first_kf / 2
-    local positions = {}
+    local positions_x = {}
+    local positions_y = {}
     for i = 1, vertex_count do
-        positions[i] = Vector2.new(0, 0)
+        positions_x[i] = 0
+        positions_y[i] = 0
     end
 
     for _, slot in ipairs(slots) do
         local kf_pos = art_mesh_keyforms:art_mesh_keyform_positions(art_mesh_index, slot.local_index)
         if not kf_pos or #kf_pos ~= #first_kf then return nil end
         for i = 0, vertex_count - 1 do
-            positions[i + 1] = Vector2.new(
-                positions[i + 1]:x() + kf_pos[i * 2 + 1] * slot.weight,
-                positions[i + 1]:y() + kf_pos[i * 2 + 2] * slot.weight
-            )
+            local pi = i + 1
+            positions_x[pi] = positions_x[pi] + kf_pos[i * 2 + 1] * slot.weight
+            positions_y[pi] = positions_y[pi] + kf_pos[i * 2 + 2] * slot.weight
         end
     end
 
@@ -97,10 +100,11 @@ local function build_moc3_drawable_mesh_for_pose(art_meshes, art_mesh_keyforms, 
     if composed and def_parent >= 0 then
         local def = composed[def_parent + 1]
         if def then
-            for i = 1, #positions do
-                local p = deformers_mod.apply_one(def, positions[i])
+            for i = 1, vertex_count do
+                local p = deformers_mod.apply_one(def, Vector2.new(positions_x[i], positions_y[i]))
                 if not p then return nil end
-                positions[i] = p
+                positions_x[i] = p:x()
+                positions_y[i] = p:y()
             end
         end
     end
@@ -109,11 +113,10 @@ local function build_moc3_drawable_mesh_for_pose(art_meshes, art_mesh_keyforms, 
     local final_vertices = {}
     for i = 1, #mesh.vertices do
         local vertex = mesh.vertices[i]
-        local pos = positions[i]
-        table.insert(final_vertices, drawable.new_vertex(
-            { pos:x(), -pos:y() },
+        final_vertices[i] = new_vertex(
+            { positions_x[i], -positions_y[i] },
             vertex.uv
-        ))
+        )
     end
 
     return {
@@ -141,7 +144,7 @@ function mesh_build.build_moc3_drawable_meshes_with_parameters(art_meshes, art_m
             art_meshes, art_mesh_keyforms, composed, bindings, parameter_values, i
         )
         if not m then return nil end
-        table.insert(meshes, m)
+        meshes[#meshes + 1] = m
     end
     return meshes
 end

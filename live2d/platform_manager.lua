@@ -278,13 +278,6 @@ function PlatformManager:setTextureStreams(textureStreams)
     end
 end
 
-function PlatformManager:jsonParseFromBytes(data)
-    if textureStreams == nil then return end
-    for k, v in pairs(textureStreams) do
-        self.textureStreams[k] = v
-    end
-end
-
 function PlatformManager:clearTextureStreams()
     self.textureStreams = {}
 end

@@ -4,19 +4,22 @@
 local math_lib = math
 
 local Vector2 = {}
-Vector2.__index = Vector2
 
-function Vector2.new(x, y)
-    return setmetatable({ _x = x or 0, _y = y or 0 }, Vector2)
-end
-
-function Vector2:x()
+local function vector2_x(self)
     return self._x
 end
 
-function Vector2:y()
+local function vector2_y(self)
     return self._y
 end
+
+function Vector2.new(x, y)
+    return { _x = x or 0, _y = y or 0, x = vector2_x, y = vector2_y }
+end
+
+Vector2.x = vector2_x
+
+Vector2.y = vector2_y
 
 -- Matrix44
 local Matrix44 = {}
@@ -128,35 +131,16 @@ function ModelMatrix.new(width, height)
 end
 
 function ModelMatrix:setup_from_layout(layout)
-    -- layout is a table of {key = value} pairs
-    -- First pass: width, height
-    for key, value in pairs(layout) do
-        if key == "width" then
-            self:set_width(value)
-        elseif key == "height" then
-            self:set_height(value)
-        end
-    end
-    -- Second pass: position
-    for key, value in pairs(layout) do
-        if key == "x" then
-            self:set_x(value)
-        elseif key == "y" then
-            self:set_y(value)
-        elseif key == "center_x" then
-            self:center_x(value)
-        elseif key == "center_y" then
-            self:center_y(value)
-        elseif key == "top" then
-            self:top(value)
-        elseif key == "bottom" then
-            self:bottom(value)
-        elseif key == "left" then
-            self:left(value)
-        elseif key == "right" then
-            self:right(value)
-        end
-    end
+    if layout.width ~= nil then self:set_width(layout.width) end
+    if layout.height ~= nil then self:set_height(layout.height) end
+    if layout.x ~= nil then self:set_x(layout.x) end
+    if layout.y ~= nil then self:set_y(layout.y) end
+    if layout.center_x ~= nil then self:center_x(layout.center_x) end
+    if layout.center_y ~= nil then self:center_y(layout.center_y) end
+    if layout.top ~= nil then self:top(layout.top) end
+    if layout.bottom ~= nil then self:bottom(layout.bottom) end
+    if layout.left ~= nil then self:left(layout.left) end
+    if layout.right ~= nil then self:right(layout.right) end
 end
 
 function ModelMatrix:set_position(x, y)

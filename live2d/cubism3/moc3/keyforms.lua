@@ -92,13 +92,13 @@ function keyforms.parse(bytes)
 
     local kfs = {}
     for i = 0, art_mesh_kf_count - 1 do
-        table.insert(kfs, keyforms.new_art_mesh_keyform_info_with_colors(
+        kfs[#kfs + 1] = keyforms.new_art_mesh_keyform_info_with_colors(
             opacities[i + 1],
             draw_orders[i + 1],
             pos_begin[i + 1],
             { mult_r[i + 1], mult_g[i + 1], mult_b[i + 1] },
             { scr_r[i + 1], scr_g[i + 1], scr_b[i + 1] }
-        ))
+        )
     end
 
     return setmetatable({

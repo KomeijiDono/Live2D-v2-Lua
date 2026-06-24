@@ -226,11 +226,11 @@ local function parse_segments(values)
         if segment_type == 0 then
             local end_p, err = read_point()
             if not end_p then return nil, err end
-            table.insert(segments, {
+            segments[#segments + 1] = {
                 kind = "linear",
                 start = start,
                 ["end"] = end_p,
-            })
+            }
             start = end_p
         elseif segment_type == 1 then
             local control1, err = read_point()
@@ -239,31 +239,31 @@ local function parse_segments(values)
             if not control2 then return nil, err end
             local end_p, err = read_point()
             if not end_p then return nil, err end
-            table.insert(segments, {
+            segments[#segments + 1] = {
                 kind = "bezier",
                 start = start,
                 control1 = control1,
                 control2 = control2,
                 ["end"] = end_p,
-            })
+            }
             start = end_p
         elseif segment_type == 2 then
             local end_p, err = read_point()
             if not end_p then return nil, err end
-            table.insert(segments, {
+            segments[#segments + 1] = {
                 kind = "stepped",
                 start = start,
                 ["end"] = end_p,
-            })
+            }
             start = end_p
         elseif segment_type == 3 then
             local end_p, err = read_point()
             if not end_p then return nil, err end
-            table.insert(segments, {
+            segments[#segments + 1] = {
                 kind = "inverse_stepped",
                 start = start,
                 ["end"] = end_p,
-            })
+            }
             start = end_p
         end
     end
@@ -336,7 +336,7 @@ function motion3.parse(source)
         if not curve then
             return nil, err
         end
-        table.insert(curves, curve)
+        curves[#curves + 1] = curve
     end
 
     return {

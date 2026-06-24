@@ -16,19 +16,19 @@ local function build_pose_groups(pose_data, part_index)
         for _, part in ipairs(group) do
             local part_idx = part_index[part.Id]
             if part_idx ~= nil then
-                table.insert(members, part_idx)
+                members[#members + 1] = part_idx
                 local link_list = {}
                 for _, link_id in ipairs(part.Links or {}) do
                     local link_idx = part_index[link_id]
                     if link_idx ~= nil then
-                        table.insert(link_list, link_idx)
+                        link_list[#link_list + 1] = link_idx
                     end
                 end
-                table.insert(links, link_list)
+                links[#links + 1] = link_list
             end
         end
         if #members >= 2 then
-            table.insert(groups, { members = members, links = links })
+            groups[#groups + 1] = { members = members, links = links }
         end
     end
     return groups
@@ -184,11 +184,11 @@ function ModelRuntime:apply_pose(delta_seconds)
     for _, group in ipairs(self.pose_groups) do
         local selection = {}
         for _, part in ipairs(group.members) do
-            table.insert(selection, self:part_selection_opacity(part))
+            selection[#selection + 1] = self:part_selection_opacity(part)
         end
         local faded = {}
         for _, part in ipairs(group.members) do
-            table.insert(faded, self.pose_opacities[part + 1])
+            faded[#faded + 1] = self.pose_opacities[part + 1]
         end
 
         local ok = pose3.update_pose_group_opacities(
@@ -249,7 +249,7 @@ function ModelRuntime:drawable_part_opacities()
         if part_idx and part_idx >= 0 then
             opacity = self.part_opacities[part_idx + 1] or 1.0
         end
-        table.insert(result, opacity)
+        result[#result + 1] = opacity
     end
     return result
 end

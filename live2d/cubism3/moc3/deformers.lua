@@ -187,10 +187,10 @@ local function warp_grid(self, warp_index, keyform_index)
     if start + len > #self.keyform_position_xys then return nil end
     local result = {}
     for i = 0, vertex_count - 1 do
-        table.insert(result, Vector2.new(
+        result[#result + 1] = Vector2.new(
             self.keyform_position_xys[start + i * 2 + 1],
             self.keyform_position_xys[start + i * 2 + 2]
-        ))
+        )
     end
     return result
 end

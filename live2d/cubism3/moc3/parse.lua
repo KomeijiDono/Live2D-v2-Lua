@@ -72,7 +72,7 @@ function parse.read_section(bytes, offsets, slot, count, element_size, read_fn)
     end
     local values = {}
     for i = 0, count - 1 do
-        table.insert(values, read_fn(bytes, offset + i * element_size))
+        values[#values + 1] = read_fn(bytes, offset + i * element_size)
     end
     return values
 end

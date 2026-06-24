@@ -73,7 +73,7 @@ function keyforms.expand_keyform_runtime_slots(axes)
                 end
             end
         end
-        table.insert(slots, keyforms.new_keyform_runtime_slot(flat_index, weight))
+        slots[#slots + 1] = keyforms.new_keyform_runtime_slot(flat_index, weight)
     end
     return slots
 end

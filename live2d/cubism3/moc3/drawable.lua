@@ -52,10 +52,10 @@ local function build_moc3_drawable_mesh(art_meshes, keyforms, art_mesh_index, lo
     local vertices = {}
     for i = 0, #positions / 2 - 1 do
         local pi = i * 2 + 1
-        table.insert(vertices, drawable.new_vertex(
+        vertices[#vertices + 1] = drawable.new_vertex(
             { positions[pi], positions[pi + 1] },
             { uvs[pi], uvs[pi + 1] }
-        ))
+        )
     end
 
     local indices = {}
@@ -65,7 +65,7 @@ local function build_moc3_drawable_mesh(art_meshes, keyforms, art_mesh_index, lo
         if pi < 0 or pi >= #vertices then
             return nil
         end
-        table.insert(indices, pi)
+        indices[#indices + 1] = pi
     end
 
     local render_order = art_meshes:art_mesh_render_order(art_mesh_index) or art_mesh_index

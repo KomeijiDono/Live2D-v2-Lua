@@ -32,7 +32,7 @@ local function read_str64_section(bytes, offs, slot, count)
         if null_pos then
             raw = string.sub(raw, 1, null_pos - 1)
         end
-        table.insert(result, raw)
+        result[#result + 1] = raw
     end
     return result
 end

@@ -172,7 +172,7 @@ end
 function deformers.transform_art_mesh_vertices_by_deformers(vertices, transforms)
     local out = {}
     for _, v in ipairs(vertices) do
-        table.insert(out, v)
+        out[#out + 1] = v
     end
 
     for _, transform in ipairs(transforms) do

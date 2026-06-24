@@ -4,6 +4,7 @@
 local ffi = require("ffi")
 local draw_order_from_raw = require("live2d.cubism3.core.art_mesh").draw_order_from_raw
 local drawable = require("live2d.cubism3.moc3.drawable")
+local image_loader = require("live2d.image_loader")
 
 local GL_STENCIL_TEST = 0x0B90
 local GL_ALPHA_TEST = 0x0BC0
@@ -61,15 +62,32 @@ void main() {
 ]]
 
 local OpenGLRenderer = {}
+OpenGLRenderer.__index = OpenGLRenderer
+
+local sort_meshes
+local function compare_draw_order(a, b)
+    local ma = sort_meshes[a + 1]
+    local mb = sort_meshes[b + 1]
+    local da = draw_order_from_raw(ma.draw_order)
+    local db = draw_order_from_raw(mb.draw_order)
+    if da ~= db then return da < db end
+    if ma.render_order ~= mb.render_order then return ma.render_order < mb.render_order end
+    return a < b
+end
 
 function OpenGLRenderer.new(gl)
-    local self = setmetatable({}, { __index = OpenGLRenderer })
+    local self = setmetatable({}, OpenGLRenderer)
     self.gl = gl
     self.shader = nil
     self.textures = {}  -- texture_id -> GL texture object
     self.vao = nil
     self.vbo = nil
     self.ibo = nil
+    self.draw_order_indices = {}
+    self.vertex_data = nil
+    self.vertex_capacity = 0
+    self.index_data = nil
+    self.index_capacity = 0
     self:init_shader()
     return self
 end
@@ -125,6 +143,11 @@ function OpenGLRenderer:init_shader()
     self.shader = prog
     self.u_projection = gl.glGetUniformLocation(prog, "u_projection")
     self.u_texture = gl.glGetUniformLocation(prog, "u_texture")
+    self.a_position = gl.glGetAttribLocation(prog, "a_position")
+    self.a_uv = gl.glGetAttribLocation(prog, "a_uv")
+    self.a_opacity = gl.glGetAttribLocation(prog, "a_opacity")
+    self.a_multiply = gl.glGetAttribLocation(prog, "a_multiply")
+    self.a_screen = gl.glGetAttribLocation(prog, "a_screen")
 
     -- Create VAO and VBO
     local vao = ffi.new("GLuint[1]")
@@ -151,8 +174,6 @@ end
 function OpenGLRenderer:load_texture(texture_path)
     local gl = self.gl
 
-    -- Use the existing image loader for PNG loading
-    local image_loader = require("live2d.image_loader")
     local width, height, data = image_loader.loadImage(texture_path)
     if not width or not data then
         error("Failed to load texture: " .. texture_path)
@@ -186,19 +207,21 @@ function OpenGLRenderer:render_meshes(meshes, textures, projection)
     gl.glUseProgram(self.shader)
 
     -- Calculate draw order
-    local draw_order_indices = {}
+    local draw_order_indices = self.draw_order_indices
+    if not draw_order_indices then
+        draw_order_indices = {}
+        self.draw_order_indices = draw_order_indices
+    end
+    local old_draw_order_count = #draw_order_indices
     for i = 1, #meshes do
         draw_order_indices[i] = i - 1
     end
-    table.sort(draw_order_indices, function(a, b)
-        local ma = meshes[a + 1]
-        local mb = meshes[b + 1]
-        local da = draw_order_from_raw(ma.draw_order)
-        local db = draw_order_from_raw(mb.draw_order)
-        if da ~= db then return da < db end
-        if ma.render_order ~= mb.render_order then return ma.render_order < mb.render_order end
-        return a < b
-    end)
+    for i = #meshes + 1, old_draw_order_count do
+        draw_order_indices[i] = nil
+    end
+    sort_meshes = meshes
+    table.sort(draw_order_indices, compare_draw_order)
+    sort_meshes = nil
 
     -- Upload and draw each mesh
     for _, idx in ipairs(draw_order_indices) do
@@ -258,7 +281,14 @@ function OpenGLRenderer:draw_mesh(mesh, textures, projection)
     end
 
     -- Build vertex data: position(2) + uv(2) + opacity(1) + multiply(3) + screen(3) = 11 floats
-    local vertex_data = ffi.new("float[?]", #vertices * 11)
+    local vertex_count = #vertices
+    local index_count = #indices
+    local vertex_float_count = vertex_count * 11
+    if (self.vertex_capacity or 0) < vertex_float_count then
+        self.vertex_data = ffi.new("float[?]", vertex_float_count)
+        self.vertex_capacity = vertex_float_count
+    end
+    local vertex_data = self.vertex_data
     for i = 1, #vertices do
         local v = vertices[i]
         local off = (i - 1) * 11
@@ -275,8 +305,12 @@ function OpenGLRenderer:draw_mesh(mesh, textures, projection)
         vertex_data[off + 10] = mesh.screen_color[3]
     end
 
-    local index_data = ffi.new("uint16_t[?]", #indices)
-    for i = 1, #indices do
+    if (self.index_capacity or 0) < index_count then
+        self.index_data = ffi.new("uint16_t[?]", index_count)
+        self.index_capacity = index_count
+    end
+    local index_data = self.index_data
+    for i = 1, index_count do
         index_data[i - 1] = indices[i]
     end
 
@@ -306,19 +340,27 @@ function OpenGLRenderer:draw_mesh(mesh, textures, projection)
 
     -- Upload geometry
     gl.glBindBuffer(0x8892, self.vbo) -- GL_ARRAY_BUFFER
-    gl.glBufferData(0x8892, #vertices * 11 * 4, vertex_data, 0x88E4) -- GL_DYNAMIC_DRAW
+    gl.glBufferData(0x8892, vertex_float_count * 4, vertex_data, 0x88E4) -- GL_DYNAMIC_DRAW
 
     gl.glBindBuffer(0x8893, self.ibo) -- GL_ELEMENT_ARRAY_BUFFER
-    gl.glBufferData(0x8893, #indices * 2, index_data, 0x88E4) -- GL_DYNAMIC_DRAW
+    gl.glBufferData(0x8893, index_count * 2, index_data, 0x88E4) -- GL_DYNAMIC_DRAW
 
     -- Set vertex attributes
     local stride = 11 * 4 -- 11 floats * 4 bytes
 
-    local a_pos = gl.glGetAttribLocation(self.shader, "a_position")
-    local a_uv = gl.glGetAttribLocation(self.shader, "a_uv")
-    local a_opacity = gl.glGetAttribLocation(self.shader, "a_opacity")
-    local a_multiply = gl.glGetAttribLocation(self.shader, "a_multiply")
-    local a_screen = gl.glGetAttribLocation(self.shader, "a_screen")
+    if self.a_position == nil then
+        self.a_position = gl.glGetAttribLocation(self.shader, "a_position")
+        self.a_uv = gl.glGetAttribLocation(self.shader, "a_uv")
+        self.a_opacity = gl.glGetAttribLocation(self.shader, "a_opacity")
+        self.a_multiply = gl.glGetAttribLocation(self.shader, "a_multiply")
+        self.a_screen = gl.glGetAttribLocation(self.shader, "a_screen")
+    end
+
+    local a_pos = self.a_position
+    local a_uv = self.a_uv
+    local a_opacity = self.a_opacity
+    local a_multiply = self.a_multiply
+    local a_screen = self.a_screen
 
     if a_pos >= 0 then
         gl.glEnableVertexAttribArray(a_pos)
@@ -350,7 +392,7 @@ function OpenGLRenderer:draw_mesh(mesh, textures, projection)
     gl.glUniform1i(self.u_texture, 0)
 
     -- Draw
-    gl.glDrawElements(0x0004, #indices, 0x1403, nil) -- GL_TRIANGLES, GL_UNSIGNED_SHORT
+    gl.glDrawElements(0x0004, index_count, 0x1403, nil) -- GL_TRIANGLES, GL_UNSIGNED_SHORT
 
     -- Disable attributes
     if a_pos >= 0 then gl.glDisableVertexAttribArray(a_pos) end
