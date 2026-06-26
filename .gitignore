@@ -2,3 +2,4 @@ frames_output/
 AGENTS.md
 __pycache__/
 venv/
+core/
