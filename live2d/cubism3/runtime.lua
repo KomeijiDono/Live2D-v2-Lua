@@ -4,6 +4,7 @@
 local moc3 = require("live2d.cubism3.moc3")
 local pose3 = require("live2d.cubism3.json.pose3")
 local parameter_utils = require("live2d.cubism3.core.parameters")
+local draw_order_from_raw = require("live2d.cubism3.core.art_mesh").draw_order_from_raw
 
 local ModelRuntime = {}
 ModelRuntime.__index = ModelRuntime
@@ -51,7 +52,11 @@ local function initial_pose_opacities(groups, part_count)
     return opacities
 end
 
-function ModelRuntime.new(model, canvas, art_meshes, art_mesh_keyforms, deformers, bindings, ids, offscreen, parts, pose)
+function ModelRuntime.new(model, canvas, art_meshes, art_mesh_keyforms, deformers, bindings, ids, offscreen, parts, draw_order_groups, pose)
+    if draw_order_groups ~= nil and draw_order_groups.drawable_count_value == nil then
+        pose = draw_order_groups
+        draw_order_groups = nil
+    end
     local parameter_values = {}
     local defaults = bindings.parameter_default_values
     for i = 1, #defaults do
@@ -103,6 +108,7 @@ function ModelRuntime.new(model, canvas, art_meshes, art_mesh_keyforms, deformer
         ids = ids,
         offscreen = offscreen,
         parts = parts,
+        draw_order_groups = draw_order_groups,
         parameter_index = parameter_index,
         parameter_values = parameter_values,
         part_index = part_index,
@@ -270,7 +276,44 @@ function ModelRuntime:update_meshes()
         return nil
     end
     self.meshes = meshes
+    self:apply_group_render_orders()
     return true
+end
+
+function ModelRuntime:apply_group_render_orders()
+    local groups = self.draw_order_groups
+    if not groups then return end
+
+    local drawable_draw_orders = {}
+    for i, mesh in ipairs(self.meshes) do
+        drawable_draw_orders[i] = draw_order_from_raw(mesh.draw_order)
+    end
+
+    local part_count = self.parts:part_count()
+    local part_draw_orders = {}
+    local part_enable = {}
+    for index = 0, part_count - 1 do
+        local raw = self.parts:interpolate_draw_order(index, self.bindings, self.parameter_values)
+        if raw ~= nil then
+            part_draw_orders[index + 1] = draw_order_from_raw(raw)
+            part_enable[index + 1] = true
+        else
+            part_draw_orders[index + 1] = 0
+            part_enable[index + 1] = false
+        end
+    end
+
+    local render_orders = groups:render_orders(
+        drawable_draw_orders,
+        part_draw_orders,
+        part_enable,
+        self.offscreen:part_offscreen_indices_list(),
+        self.offscreen:offscreen_count()
+    )
+    if not render_orders then return end
+    for i, mesh in ipairs(self.meshes) do
+        mesh.render_order = render_orders[i]
+    end
 end
 
 return ModelRuntime

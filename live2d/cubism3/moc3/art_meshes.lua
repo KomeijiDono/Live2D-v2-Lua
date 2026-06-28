@@ -21,7 +21,6 @@ local MASK_COUNTS_SLOT = 48
 local UV_XYS_SLOT = 78
 local POSITION_INDICES_SLOT = 79
 local DRAWABLE_MASKS_SLOT = 80
-local RENDER_ORDER_INDICES_SLOT = 87
 
 function art_meshes.new_art_mesh_info(texture_index, drawable_flags, position_index_count, uv_begin_index, position_index_begin_index, vertex_count, mask_begin_index, mask_count)
     return {
@@ -36,30 +35,10 @@ function art_meshes.new_art_mesh_info(texture_index, drawable_flags, position_in
     }
 end
 
-local function parse_render_orders(bytes, offs, cnts, art_mesh_count)
+local function default_render_orders(art_mesh_count)
     local render_orders = {}
     for i = 0, art_mesh_count - 1 do
         render_orders[i + 1] = i
-    end
-
-    local object_count = parse.to_usize(cnts.draw_order_group_objects, "draw order group object count")
-    if not object_count or object_count <= 0 then
-        return render_orders
-    end
-
-    local off_val = offs:section_offset(RENDER_ORDER_INDICES_SLOT)
-    if off_val == nil or off_val == 0 then
-        return render_orders
-    end
-
-    local order_indices, err = parse.read_i32_section(bytes, offs, RENDER_ORDER_INDICES_SLOT, object_count)
-    if not order_indices then return nil, err end
-
-    for rank = 0, #order_indices - 1 do
-        local drawable_index = order_indices[rank + 1]
-        if drawable_index >= 0 and drawable_index < art_mesh_count then
-            render_orders[drawable_index + 1] = rank
-        end
     end
     return render_orders
 end
@@ -75,8 +54,7 @@ function art_meshes.parse(bytes)
     local art_mesh_count = parse.to_usize(cnts.art_meshes, "art mesh count")
     if not art_mesh_count then return nil, "Invalid art mesh count" end
 
-    local render_orders, err = parse_render_orders(bytes, offs, cnts, art_mesh_count)
-    if not render_orders then return nil, err end
+    local render_orders = default_render_orders(art_mesh_count)
 
     local kf_binding_band, err = parse.read_i32_section_or_default(bytes, offs, ART_MESH_KEYFORM_BINDING_BAND_INDICES_SLOT, art_mesh_count, 0)
     if not kf_binding_band then return nil, err end

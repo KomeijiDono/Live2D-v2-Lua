@@ -8,6 +8,7 @@ local pose3 = require("live2d.cubism3.json.pose3")
 local ModelRuntime = require("live2d.cubism3.runtime")
 
 local base = "resources/Hiyori/"
+local rana_base = "resources/Rana/"
 
 local function read_file(path)
     local file = assert(io.open(path, "rb"))
@@ -121,6 +122,57 @@ check("motion3 parse", motion ~= nil, err)
 check("motion3 version", motion and motion.version == 3)
 check("motion3 curves", motion and #motion.curves > 0)
 check("motion3 sample", motion and motion.curves[1]:sample(0) ~= nil)
+check(
+    "negative curve fade times inherit motion fade",
+    math.abs(motion3.parameter_curve_fade_weight(0.9, 1.0, 1.0, -1.0, -1.0, 1.5, 0.0, -1.0) - 0.9) < 0.0001
+)
+
+-- Cubism5 draw-order groups supersede slot 87 object order. Art meshes keep
+-- identity render order until the runtime expands draw-order groups.
+print("\n-- Cubism5 Draw Order Groups --")
+local rana_moc_bytes = read_file(rana_base .. "adv_live2d_rana_003_live_01.moc3")
+local rana_cnts, err = moc3.counts.parse(rana_moc_bytes)
+check("rana counts parse", rana_cnts ~= nil, err)
+check("rana has draw order groups", rana_cnts and rana_cnts.draw_order_groups == 9)
+check("rana has draw order group objects", rana_cnts and rana_cnts.draw_order_group_objects == 319)
+
+local rana_art_meshes, err = moc3.art_meshes.parse(rana_moc_bytes)
+check("rana art meshes parse", rana_art_meshes ~= nil, err)
+check("rana art mesh render order defaults to identity", (function()
+    if not rana_art_meshes then return false end
+    for i = 1, #rana_art_meshes.render_orders do
+        if rana_art_meshes.render_orders[i] ~= i - 1 then
+            return false, i
+        end
+    end
+    return true
+end)())
+
+local rana_groups, err = moc3.draw_order_groups.parse(rana_moc_bytes)
+check("rana draw order groups parse", rana_groups ~= nil, err)
+check("rana draw order group count", rana_groups and rana_groups:group_count() == 9)
+check("rana draw order group drawable count", rana_groups and rana_groups:drawable_count() == 311)
+if rana_groups then
+    local drawable_orders = {}
+    for i = 1, rana_groups:drawable_count() do drawable_orders[i] = 0 end
+    local part_orders = {}
+    local part_enabled = {}
+    local part_offscreens = {}
+    for i = 1, rana_cnts.parts do
+        part_orders[i] = 0
+        part_enabled[i] = false
+        part_offscreens[i] = -1
+    end
+    local expanded = rana_groups:render_orders(drawable_orders, part_orders, part_enabled, part_offscreens, 0)
+    check("rana draw order groups expand", expanded ~= nil and #expanded == 311)
+    check("rana draw order groups affect ordering", (function()
+        if not expanded then return false end
+        for i = 1, #expanded do
+            if expanded[i] ~= i - 1 then return true end
+        end
+        return false
+    end)())
+end
 
 -- Test ModelRuntime construction
 print("\n-- ModelRuntime --")
@@ -185,6 +237,43 @@ check(
     "rotation parent angle uses plus-y probe",
     child_rotation and math.abs(child_rotation.angle_degrees - 5) < 0.0001,
     child_rotation and ("child angle was " .. tostring(child_rotation.angle_degrees)) or "compose failed"
+)
+
+local half_reflect_defs = setmetatable({
+    parent_deformer_indices = { -1 },
+    deformer_kinds = { 1 },
+    specific_indices = { 0 },
+    warp_keyform_binding_band_indices = {},
+    warp_keyform_begin_indices = {},
+    warp_keyform_counts = {},
+    warp_vertex_counts = {},
+    warp_rows = {},
+    warp_cols = {},
+    warp_keyform_opacities = {},
+    rotation_keyform_binding_band_indices = { 0 },
+    rotation_keyform_begin_indices = { 0 },
+    rotation_keyform_counts = { 2 },
+    rotation_base_angles = { 0 },
+    warp_keyform_position_begin_indices = {},
+    rotation_keyform_angles = { 0, 0 },
+    rotation_keyform_origin_xs = { 0, 0 },
+    rotation_keyform_origin_ys = { 0, 0 },
+    rotation_keyform_scales = { 1, 1 },
+    rotation_keyform_reflect_xs = { true, false },
+    rotation_keyform_reflect_ys = { false, false },
+    rotation_keyform_opacities = { 1, 1 },
+    keyform_position_xys = {},
+}, { __index = moc3.deformers })
+local half_reflect_bindings = {
+    keyform_slots = function()
+        return { { local_index = 0, weight = 0.5 }, { local_index = 1, weight = 0.5 } }
+    end,
+}
+local half_reflect_composed = half_reflect_defs:compose(half_reflect_bindings, {})
+check(
+    "rotation reflect interpolation uses floor sentinel",
+    half_reflect_composed and half_reflect_composed[1] and half_reflect_composed[1].flip_x == false,
+    half_reflect_composed and ("flip_x was " .. tostring(half_reflect_composed[1].flip_x)) or "compose failed"
 )
 
 print("\n=== Results: " .. passed .. "/" .. total .. " passed ===")

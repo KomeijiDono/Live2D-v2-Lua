@@ -32,6 +32,13 @@ end
 function motion3.parameter_curve_fade_weight(motion_weight, motion_fade_in, motion_fade_out,
     curve_fade_in_seconds, curve_fade_out_seconds,
     user_time_seconds, fade_in_start_time, end_time_seconds)
+    if curve_fade_in_seconds ~= nil and curve_fade_in_seconds < 0 then
+        curve_fade_in_seconds = nil
+    end
+    if curve_fade_out_seconds ~= nil and curve_fade_out_seconds < 0 then
+        curve_fade_out_seconds = nil
+    end
+
     if curve_fade_in_seconds == nil and curve_fade_out_seconds == nil then
         return motion_weight
     end

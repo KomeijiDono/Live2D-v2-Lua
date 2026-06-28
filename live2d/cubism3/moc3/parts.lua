@@ -12,6 +12,7 @@ local PART_KEYFORM_BINDING_BAND_INDICES_SLOT = 4
 local PART_KEYFORM_BEGIN_INDICES_SLOT = 5
 local PART_KEYFORM_COUNTS_SLOT = 6
 local PART_PARENT_PART_INDICES_SLOT = 9
+local PART_KEYFORM_DRAW_ORDERS_SLOT = 58
 local PART_KEYFORM_OPACITIES_SLOT = 59
 
 function parts.parse(bytes)
@@ -37,10 +38,14 @@ function parts.parse(bytes)
     local kf_counts, err = parse.read_i32_section(bytes, offs, PART_KEYFORM_COUNTS_SLOT, part_count)
     if not kf_counts then return nil, err end
     local kf_opacities
+    local kf_draw_orders
     if part_keyform_count > 0 then
+        kf_draw_orders, err = parse.read_f32_section(bytes, offs, PART_KEYFORM_DRAW_ORDERS_SLOT, part_keyform_count)
+        if not kf_draw_orders then return nil, err end
         kf_opacities, err = parse.read_f32_section(bytes, offs, PART_KEYFORM_OPACITIES_SLOT, part_keyform_count)
         if not kf_opacities then return nil, err end
     else
+        kf_draw_orders = {}
         kf_opacities = {}
     end
 
@@ -49,6 +54,7 @@ function parts.parse(bytes)
         keyform_binding_band_indices = kf_binding_band_indices,
         keyform_begin_indices = kf_begin_indices,
         keyform_counts = kf_counts,
+        keyform_draw_orders = kf_draw_orders,
         keyform_opacities = kf_opacities,
     }, { __index = parts })
 end
@@ -90,6 +96,37 @@ function parts.interpolate_opacity(self, part_index, bindings, parameter_values)
         opacity = opacity + self.keyform_opacities[kf_idx + 1] * slot.weight
     end
     return opacity
+end
+
+function parts.interpolate_draw_order(self, part_index, bindings, parameter_values)
+    local kf_count = self.keyform_counts[part_index + 1]
+    if kf_count == nil then
+        return nil
+    end
+    if kf_count == 0 then
+        return nil
+    end
+    local begin = self.keyform_begin_indices[part_index + 1]
+    if begin == nil or begin < 0 then
+        return nil
+    end
+    local band_index = self.keyform_binding_band_indices[part_index + 1]
+    if band_index == nil then
+        return nil
+    end
+    local slots = bindings:keyform_slots(band_index, kf_count, parameter_values)
+    if not slots then
+        return nil
+    end
+    local draw_order = 0.0
+    for _, slot in ipairs(slots) do
+        local kf_idx = begin + slot.local_index
+        if kf_idx + 1 > #self.keyform_draw_orders then
+            return nil
+        end
+        draw_order = draw_order + self.keyform_draw_orders[kf_idx + 1] * slot.weight
+    end
+    return draw_order
 end
 
 return parts

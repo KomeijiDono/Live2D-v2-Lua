@@ -104,9 +104,10 @@ end
 
 -- Create runtime
 print("Creating ModelRuntime...")
+local draw_order_groups = moc3.draw_order_groups.parse(moc_bytes)
 local runtime = ModelRuntime.new(
     model_data, canvas, art_meshes, keyforms, deformers, bindings,
-    ids, offscreen, parts, pose
+    ids, offscreen, parts, draw_order_groups, pose
 )
 if not runtime then
     error("Failed to create ModelRuntime")

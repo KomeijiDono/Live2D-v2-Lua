@@ -81,6 +81,14 @@ function offscreen.drawable_parent_part_index(self, drawable_index)
     return self.drawable_parent_part_indices[drawable_index + 1]
 end
 
+function offscreen.part_offscreen_indices_list(self)
+    return self.part_offscreen_indices
+end
+
+function offscreen.offscreen_count(self)
+    return #self.offscreen_owner_part_indices
+end
+
 -- Check if a part is descendant of an ancestor (by part index)
 local function is_part_descendant_of(self, part_index, ancestor_index)
     local current = part_index

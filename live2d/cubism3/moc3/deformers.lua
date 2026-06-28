@@ -263,8 +263,8 @@ local function interpolated_rotation(self, rotation_index, bindings, parameter_v
     end
 
     local base_angle = self.rotation_base_angles[rotation_index + 1] or 0
-    local flip_x_bool = (flip_x + 0.001) % 1 >= 0.5
-    local flip_y_bool = (flip_y + 0.001) % 1 >= 0.5
+    local flip_x_bool = math.floor(flip_x + 0.001) ~= 0
+    local flip_y_bool = math.floor(flip_y + 0.001) ~= 0
 
     return {
         angle_degrees = base_angle + angle,
