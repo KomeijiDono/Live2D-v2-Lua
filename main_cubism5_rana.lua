@@ -248,6 +248,18 @@ local function isInsideWindow(x, y)
     return x >= 0 and x < W and y >= 0 and y < H
 end
 
+local function applyMouseGaze()
+    local mouseX, mouseY = sdl2.getMouseState()
+    if not isInsideWindow(mouseX, mouseY) then return end
+
+    local x = (mouseX / W - 0.5) * 2.0
+    local y = (mouseY / H - 0.5) * -2.0
+    runtime:set_parameter("ParamAngleX", x * 30.0)
+    runtime:set_parameter("ParamAngleY", y * 30.0)
+    runtime:set_parameter("ParamEyeBallX", x)
+    runtime:set_parameter("ParamEyeBallY", y)
+end
+
 local function playMotion(motionData, selectedIndex)
     if motionData == nil then return end
     motionIndex = selectedIndex or motionIndex
@@ -313,6 +325,8 @@ while running do
 
     expressionManager:tick(delta)
     expressionManager:apply(runtime)
+
+    applyMouseGaze()
 
     runtime:update_physics(delta)
 
